@@ -77,226 +77,112 @@
         <div class="code-title">Java Code</div>
         <button class="copy-button" onclick="copyCode()">📋 Copy Code</button>
         <pre class="plain-code" id="java-code">import java.util.*;
+import java.util.Scanner;
 
-public class TravelingSalesman {
-    private static int n; // number of cities
-    private static int[][] dist; // distance matrix
-    private static Scanner sc = new Scanner(System.in);
-    
+public class TSPDynamicProgramming {
+    static int N;
+    static int[][] dist;
+    static int[][] dp;
+    static int[][] parent;
+    static final int INF = 1000000000;
+
     public static void main(String[] args) {
-        System.out.println("=== Traveling Salesman Problem Solver ===\n");
-        
-        // Get number of cities
-        n = getNumberOfCities();
-        
-        // Initialize distance matrix
-        dist = new int[n][n];
-        
-        // Get distance matrix from user
-        getDistanceMatrix();
-        
-        // Get starting city
-        int startCity = getStartingCity();
-        
-        // Solve TSP
-        solveTSP(startCity);
-    }
-    
-    private static int getNumberOfCities() {
-        int cities;
-        while (true) {
-            try {
-                System.out.print("Enter the number of cities: ");
-                String input = sc.nextLine().trim();
-                
-                if (input.isEmpty()) {
-                    System.out.println("Error: Please enter a valid number!");
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of cities: ");
+        N = sc.nextInt();
+        sc.nextLine(); // consume leftover newline
+
+        dist = new int[N][N];
+        System.out.println("Enter distance matrix row by row (space separated). No negative numbers, diagonal must be zero:");
+
+        for (int i = 0; i < N; i++) {
+            while (true) {
+                String line = sc.nextLine();
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length != N) {
+                    System.out.println("You must enter exactly " + N + " numbers. Try again:");
                     continue;
                 }
-                
-                cities = Integer.parseInt(input);
-                
-                if (cities &lt;= 0) {
-                    System.out.println("Error: Number of cities must be positive!");
-                    continue;
-                }
-                
-                if (cities &lt; 2) {
-                    System.out.println("Error: Need at least 2 cities for TSP!");
-                    continue;
-                }
-                
-                break;
-            } catch (NumberFormatException e) {
-                System.out.println("Error: Please enter a valid integer (no characters allowed)!");
-            }
-        }
-        return cities;
-    }
-    
-    private static void getDistanceMatrix() {
-        System.out.println("\n*** IMPORTANT: Enter diagonal values as 0 (distance from a city to itself) ***");
-        System.out.println("Enter the distance matrix (city to city distances):");
-        System.out.println("Cities are numbered from 0 to " + (n-1));
-        
-        for (int i = 0; i &lt; n; i++) {
-            for (int j = 0; j &lt; n; j++) {
-                while (true) {
+
+                boolean valid = true;
+                for (int j = 0; j < N; j++) {
                     try {
-                        System.out.print("Distance from city " + i + " to city " + j + ": ");
-                        String input = sc.nextLine().trim();
-                        
-                        if (input.isEmpty()) {
-                            System.out.println("Error: Please enter a valid distance!");
-                            continue;
+                        int val = Integer.parseInt(parts[j]);
+                        if (val < 0) {
+                            System.out.println("Distance cannot be negative. Try entering the entire row again:");
+                            valid = false;
+                            break;
                         }
-                        
-                        int distance = Integer.parseInt(input);
-                        
-                        if (distance &lt; 0) {
-                            System.out.println("Error: Distance cannot be negative!");
-                            continue;
+                        if (i == j && val != 0) {
+                            System.out.println("Diagonal elements must be zero. Try entering the entire row again:");
+                            valid = false;
+                            break;
                         }
-                        
-                        // Check diagonal values
-                        if (i == j &amp;&amp; distance != 0) {
-                            System.out.println("Warning: Diagonal value should be 0 (distance from city to itself)");
-                            System.out.println("Setting distance from city " + i + " to city " + j + " as 0");
-                            distance = 0;
-                        }
-                        
-                        dist[i][j] = distance;
-                        break;
-                        
+                        dist[i][j] = val;
                     } catch (NumberFormatException e) {
-                        System.out.println("Error: Please enter a valid integer (no characters allowed)!");
+                        System.out.println("Invalid input. Try entering the entire row again:");
+                        valid = false;
+                        break;
                     }
                 }
+                if (valid) break; // row accepted
             }
         }
-        
-        // Display the entered matrix
-        System.out.println("\nDistance Matrix:");
-        System.out.print("     ");
-        for (int j = 0; j &lt; n; j++) {
-            System.out.printf("%4d ", j);
-        }
-        System.out.println();
-        
-        for (int i = 0; i &lt; n; i++) {
-            System.out.printf("%2d : ", i);
-            for (int j = 0; j &lt; n; j++) {
-                System.out.printf("%4d ", dist[i][j]);
+
+        // Initialize DP and parent arrays
+        dp = new int[N][1 << N];
+        parent = new int[N][1 << N];
+
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < (1 << N); j++) {
+                dp[i][j] = -1;
+                parent[i][j] = -1;
             }
-            System.out.println();
         }
+
+        int mask = 1; // starting at city 0, so only city 0 visited
+        int ans = tsp(0, mask);
+
+        System.out.println("Minimum cost: " + ans);
+        System.out.print("Optimal Path: 0 -> ");
+        printPath(0, mask);
+        System.out.println("0"); // return to start city
     }
-    
-    private static int getStartingCity() {
-        int startCity;
-        while (true) {
-            try {
-                System.out.print("\nEnter the starting city (0 to " + (n-1) + "): ");
-                String input = sc.nextLine().trim();
-                
-                if (input.isEmpty()) {
-                    System.out.println("Error: Please enter a valid city number!");
-                    continue;
+
+    static int tsp(int pos, int mask) {
+        if (mask == (1 << N) - 1) {
+            return dist[pos][0]; // return to starting city
+        }
+
+        if (dp[pos][mask] != -1) {
+            return dp[pos][mask];
+        }
+
+        int ans = INF;
+        int bestNext = -1;
+
+        for (int city = 0; city < N; city++) {
+            if ((mask & (1 << city)) == 0) { // if city not visited
+                int newAns = dist[pos][city] + tsp(city, mask | (1 << city));
+                if (newAns < ans) {
+                    ans = newAns;
+                    bestNext = city;
                 }
-                
-                startCity = Integer.parseInt(input);
-                
-                if (startCity &lt; 0 || startCity &gt;= n) {
-                    System.out.println("Error: Starting city must be between 0 and " + (n-1) + "!");
-                    continue;
-                }
-                
-                break;
-            } catch (NumberFormatException e) {
-                System.out.println("Error: Please enter a valid integer (no characters allowed)!");
             }
         }
-        return startCity;
+        parent[pos][mask] = bestNext;
+        return dp[pos][mask] = ans;
     }
-    
-    private static void solveTSP(int startCity) {
-        System.out.println("\n=== Solving TSP ===");
-        System.out.println("Starting from city: " + startCity);
-        
-        // Create list of cities to visit (excluding start city)
-        List&lt;Integer&gt; cities = new ArrayList&lt;&gt;();
-        for (int i = 0; i &lt; n; i++) {
-            if (i != startCity) {
-                cities.add(i);
-            }
-        }
-        
-        int minCost = Integer.MAX_VALUE;
-        List&lt;Integer&gt; bestPath = new ArrayList&lt;&gt;();
-        
-        // Generate all permutations
-        List&lt;List&lt;Integer&gt;&gt; permutations = generatePermutations(cities);
-        
-        System.out.println("\nAnalyzing all possible routes...");
-        
-        for (List&lt;Integer&gt; perm : permutations) {
-            // Calculate cost of this path
-            int cost = 0;
-            int currentCity = startCity;
-            List&lt;Integer&gt; currentPath = new ArrayList&lt;&gt;();
-            currentPath.add(startCity);
-            
-            // Visit all cities in this permutation
-            for (int city : perm) {
-                cost += dist[currentCity][city];
-                currentPath.add(city);
-                currentCity = city;
-            }
-            
-            // Return to start city
-            cost += dist[currentCity][startCity];
-            currentPath.add(startCity);
-            
-            // Check if this is the best path so far
-            if (cost &lt; minCost) {
-                minCost = cost;
-                bestPath = new ArrayList&lt;&gt;(currentPath);
-            }
-        }
-        
-        // Display results
-        System.out.println("\n=== SOLUTION ===");
-        System.out.println("Optimal path: " + bestPath);
-        System.out.println("Minimum cost: " + minCost);
-        
-        // Display step-by-step path
-        System.out.println("\nStep-by-step journey:");
-        for (int i = 0; i &lt; bestPath.size() - 1; i++) {
-            int from = bestPath.get(i);
-            int to = bestPath.get(i + 1);
-            System.out.println("City " + from + " -&gt; City " + to + " (distance: " + dist[from][to] + ")");
-        }
-    }
-    
-    private static List&lt;List&lt;Integer&gt;&gt; generatePermutations(List&lt;Integer&gt; cities) {
-        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
-        generatePermutationsHelper(cities, 0, result);
-        return result;
-    }
-    
-    private static void generatePermutationsHelper(List&lt;Integer&gt; cities, int start, List&lt;List&lt;Integer&gt;&gt; result) {
-        if (start &gt;= cities.size()) {
-            result.add(new ArrayList&lt;&gt;(cities));
-            return;
-        }
-        
-        for (int i = start; i &lt; cities.size(); i++) {
-            Collections.swap(cities, start, i);
-            generatePermutationsHelper(cities, start + 1, result);
-            Collections.swap(cities, start, i); // backtrack
-        }
+
+    static void printPath(int pos, int mask) {
+        int next = parent[pos][mask];
+        if (next == -1) return;
+        System.out.print(next + " -> ");
+        printPath(next, mask | (1 << next));
     }
 }
+
 </pre>
     </div>
 
