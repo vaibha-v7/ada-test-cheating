@@ -299,6 +299,199 @@ public class TravelingSalesman {
 }
 </pre>
     </div>
+
+
+    <div class="code-container">
+        <div class="code-title">Java Code</div>
+        <!-- <button class="copy-button" onclick="copyCode()">📋 Copy Code</button> -->
+        <pre class="plain-code" id="java-code">import java.util.*;
+
+            import java.util.*;
+
+public class MatrixChainDP {
+    
+    // Function to print optimal parenthesization
+    static void printOptimalOrder(int i, int j, int[][] K, char[] name) {
+        if (i == j) {
+            System.out.print(name[i]); // single matrix
+            return;
+        }
+        System.out.print("(");
+        printOptimalOrder(i, K[i][j], K, name);
+        printOptimalOrder(K[i][j] + 1, j, K, name);
+        System.out.print(")");
+    }
+    
+    // Function to validate matrix dimensions
+    static boolean validateDimensions(int[] p, int n) {
+        for (int i = 0; i <= n; i++) {
+            if (p[i] <= 0) {
+                System.out.println("Error: All dimensions must be positive!");
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        try {
+            // Input validation for number of matrices
+            System.out.print("Enter number of matrices: ");
+            int n = sc.nextInt();
+            
+            if (n <= 0) {
+                System.out.println("Error: Number of matrices must be positive!");
+                return;
+            }
+            
+            if (n > 26) {
+                System.out.println("Error: Cannot handle more than 26 matrices!");
+                return;
+            }
+            
+            // Input matrix dimensions
+            int[] p = new int[n + 1];
+            System.out.println("Enter matrix dimensions:");
+            
+            // Get first matrix dimensions
+            System.out.print("Matrix A (Matrix 1) - Rows: ");
+            p[0] = sc.nextInt();
+            System.out.print("Matrix A (Matrix 1) - Columns: ");
+            p[1] = sc.nextInt();
+            
+            // Get remaining matrices dimensions
+            for (int i = 1; i < n; i++) {
+                char matrixName = (char)('A' + i);
+                System.out.print("Matrix " + matrixName + " (Matrix " + (i + 1) + ") - Rows: ");
+                int rows = sc.nextInt();
+                System.out.print("Matrix " + matrixName + " (Matrix " + (i + 1) + ") - Columns: ");
+                p[i + 1] = sc.nextInt();
+                
+                // Validate matrix multiplication compatibility
+                if (p[i] != rows) {
+                    System.out.println("Error: Matrix " + (char)('A' + i - 1) + " columns (" + p[i] + 
+                                     ") must equal Matrix " + matrixName + " rows (" + rows + ")!");
+                    return;
+                }
+            }
+            
+            // Validate dimensions
+            if (!validateDimensions(p, n)) {
+                return;
+            }
+            
+            // Display matrix dimensions for confirmation
+            System.out.println("\nMatrix dimensions:");
+            for (int i = 0; i < n; i++) {
+                System.out.println("Matrix " + (char)('A' + i) + ": " + p[i] + " × " + p[i + 1]);
+            }
+            
+            // DP tables
+            int[][] M = new int[n + 1][n + 1]; // cost table
+            int[][] K = new int[n + 1][n + 1]; // split table
+            
+            // Initialize cost table (diagonal elements are 0)
+            for (int i = 1; i <= n; i++) {
+                M[i][i] = 0;
+            }
+            
+            // L = chain length
+            for (int L = 2; L <= n; L++) {
+                for (int i = 1; i <= n - L + 1; i++) {
+                    int j = i + L - 1;
+                    M[i][j] = Integer.MAX_VALUE;
+                    
+                    for (int k = i; k < j; k++) {
+                        // Check for potential overflow
+                        long cost = (long)M[i][k] + (long)M[k + 1][j] + (long)p[i - 1] * p[k] * p[j];
+                        
+                        if (cost > Integer.MAX_VALUE) {
+                            System.out.println("Warning: Cost overflow detected! Results may be inaccurate.");
+                        }
+                        
+                        int q = (int)Math.min(cost, Integer.MAX_VALUE);
+                        
+                        if (q < M[i][j]) {
+                            M[i][j] = q;
+                            K[i][j] = k;
+                        }
+                    }
+                }
+            }
+            
+            // Print M table
+            System.out.println("\nM (cost) table:");
+            System.out.print("     ");
+            for (int j = 1; j <= n; j++) {
+                System.out.printf("%8d", j);
+            }
+            System.out.println();
+            
+            for (int i = 1; i <= n; i++) {
+                System.out.printf("%3d: ", i);
+                for (int j = 1; j <= n; j++) {
+                    if (i > j) {
+                        System.out.print("       -");
+                    } else {
+                        System.out.printf("%8d", M[i][j]);
+                    }
+                }
+                System.out.println();
+            }
+            
+            // Print K table
+            System.out.println("\nK (split) table:");
+            System.out.print("     ");
+            for (int j = 1; j <= n; j++) {
+                System.out.printf("%6d", j);
+            }
+            System.out.println();
+            
+            for (int i = 1; i <= n; i++) {
+                System.out.printf("%3d: ", i);
+                for (int j = 1; j <= n; j++) {
+                    if (i >= j) {
+                        System.out.print("     -");
+                    } else {
+                        System.out.printf("%6d", K[i][j]);
+                    }
+                }
+                System.out.println();
+            }
+            
+            // Results
+            System.out.println("\n" + "=".repeat(50));
+            System.out.println("RESULTS:");
+            System.out.println("=".repeat(50));
+            System.out.println("Minimum number of scalar multiplications: " + M[1][n]);
+            
+            // Optimal parenthesization
+            char[] name = new char[n + 1]; // Only allocate what we need
+            for (int i = 0; i <= n; i++) {
+                name[i] = (char)('A' + i - 1); // A, B, C, etc. (starting from index 1)
+            }
+            
+            System.out.print("Optimal parenthesization: ");
+            if (n == 1) {
+                System.out.println("A");
+            } else {
+                printOptimalOrder(1, n, K, name);
+                System.out.println();
+            }
+            
+        } catch (InputMismatchException e) {
+            System.out.println("Error: Please enter valid integers only!");
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        } finally {
+            sc.close();
+        }
+    }
+}
+    </pre>
+    </div>
     
     <script>
         function copyCode() {
